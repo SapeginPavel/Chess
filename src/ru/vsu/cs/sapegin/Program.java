@@ -10,7 +10,7 @@ public class Program {
 
     public static void main(String[] args) throws IOException {
 
-//        Game game = new Game(new ConsoleController());
+//        AbstractGame game = new LocalGame(new Player(Colors.WHITE), new Player(Colors.BLACK), new ConsoleController());
 //        game.startGame();
 
         AbstractGame localGame = new LocalGame(new Player(Colors.WHITE), new Player(Colors.BLACK), new GraphicInterfaceController(new GraphicApp()));

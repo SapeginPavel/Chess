@@ -5,6 +5,7 @@ import ru.vsu.cs.sapegin.sdk.AbstractGame;
 import java.util.List;
 import java.util.Random;
 
+//Бот под графический интерфейс только
 public class SimpleBot extends Player {
     public SimpleBot(Colors color) {
         super(color);
@@ -35,5 +36,4 @@ public class SimpleBot extends Player {
         char[] pieces = {'Q', 'R', 'B', 'k'};
         return pieces[random.nextInt(pieces.length)];
     }
-
 }
