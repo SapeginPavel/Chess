@@ -8,7 +8,9 @@ public enum GameCommand {
     MOVE("move"),
     UPDATE_PAWN("update_pawn"),
     MOVE_COMPLETED("move_completed"),
-    DISPLAY_AVAILABLE_CELLS("display_available_cells");
+    DISPLAY_AVAILABLE_CELLS("display_available_cells"),
+    SET_SESSION_ID("set_session_id"),
+    SUCCESS("success");
 
     private String comm;
 

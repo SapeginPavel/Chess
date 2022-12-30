@@ -23,6 +23,7 @@ public class NetworkGame extends AbstractGame {
     private final RSocket rSocket;
     //todo: переписать контроллер (наследование)
     ClientController controller;
+    int session_id = -1;
 
     public NetworkGame(Player mainPlayer, String server, int port, ClientController clientController) throws IOException {
         super(clientController);
@@ -46,11 +47,12 @@ public class NetworkGame extends AbstractGame {
     }
 
     protected void pusher(String command) {
-        rSocket.requestResponse(DefaultPayload.create(command))
+        String finalCommand = session_id + "," + command;
+        rSocket.requestResponse(DefaultPayload.create(finalCommand))
                 .map(Payload::getDataUtf8)
                 .doOnNext(s -> {
                     try {
-                        handler2(s);
+                        handler(s);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -58,32 +60,38 @@ public class NetworkGame extends AbstractGame {
 //                .block(); //говорит ждать
     }
 
-    private void handler2 (String response) throws IOException {
+    private void handler(String response) throws IOException {
         String[] responses = response.split(",");
-        if (responses[0].equals(AdditionalCommands.list.getComm())) {
-            if (responses[1].equals(AdditionalCommands.enabled.getComm())) {
-                controller.setEnabledCells(board, ToStringUtils.getListOfCellsFromStr(board, responses[2]), true);
-            } else if (responses[1].equals(AdditionalCommands.available.getComm())) {
-                controller.displayAvailableCells(ToStringUtils.getListOfCellsFromStr(board, responses[2]));
+        System.out.println(response);
+        if (responses[1].equals(GameCommand.SET_SESSION_ID.getComm()) && session_id == -1) {
+            session_id = Integer.parseInt(responses[0]);
+            pusher(GameCommand.SUCCESS.getComm());
+        } else if (Integer.parseInt(responses[0]) == session_id){
+            if (responses[1].equals(AdditionalCommands.list.getComm())) {
+                if (responses[2].equals(AdditionalCommands.enabled.getComm())) {
+                    controller.setEnabledCells(board, ToStringUtils.getListOfCellsFromStr(board, responses[3]), true);
+                } else if (responses[2].equals(AdditionalCommands.available.getComm())) {
+                    controller.displayAvailableCells(ToStringUtils.getListOfCellsFromStr(board, responses[3]));
+                }
+            } else if (responses[1].equals(GameCommand.UPDATE_PAWN.getComm())) {
+                Cell cell = ToStringUtils.getCellFromString(board, responses[2]);
+                controller.choosePieceInsteadOfPawn(this, mainPlayer.getColor(), cell);
+            } else if (responses[1].equals(GameCommand.MOVE.getComm())) {
+                Cell cellFrom = getCellFromStr(responses[2]);
+                Cell cellTo = getCellFromStr(responses[3]);
+                cellFrom.getPiece().moveTo(cellTo);
+                if (cellTo.getPiece().getCharNameOfPiece() != responses[4].charAt(0)) {
+                    setPieceByCharOnly(responses[4].charAt(0), cellTo);
+                }
+                controller.setWasChanged(convertListOfCellsToListOfCellsAsJButton(List.of(cellFrom, cellTo)));
+                controller.displayBoard(board);
+                pusher(GameCommand.MOVE_COMPLETED.getComm());
+            } else if (responses[1].equals(GameCommand.END.getComm())) {
+                controller.displayBoard(board);
+                controller.handleGameState(GameState.valueOf(responses[2]));
             }
-        } else if (responses[0].equals(GameCommand.UPDATE_PAWN.getComm())) {
-            Cell cell = ToStringUtils.getCellFromString(board, responses[1]);
-            controller.choosePieceInsteadOfPawn(this, mainPlayer.getColor(), cell);
-        } else if (responses[0].equals(GameCommand.MOVE.getComm())) {
-            Cell cellFrom = getCellFromStr(responses[1]);
-            Cell cellTo = getCellFromStr(responses[2]);
-            cellFrom.getPiece().moveTo(cellTo);
-            if (cellTo.getPiece().getCharNameOfPiece() != responses[3].charAt(0)) {
-                setPieceByCharOnly(responses[3].charAt(0), cellTo);
-//                controller.setWasChanged(convertListOfCellsToListOfCellsAsJButton(List.of(cellTo))); //возможно, лишнее
-            }
-            controller.setWasChanged(convertListOfCellsToListOfCellsAsJButton(List.of(cellFrom, cellTo)));
-            controller.displayBoard(board);
-            pusher(GameCommand.MOVE_COMPLETED.getComm());
-        } else if (responses[0].equals(GameCommand.END.getComm())) {
-            controller.displayBoard(board);
-            controller.handleGameState(GameState.valueOf(responses[1]));
         }
+
     }
 
     private Cell getCellFromStr(String cell) {
